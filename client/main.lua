@@ -2,6 +2,7 @@ local QBCore = exports['qb-core']:GetCoreObject()
 local Logedin = false
 local currentTattoos = {}
 local cam = nil
+local view = false
 local opacity = 1
 local Tattoshopprice = {}
 local Tattoshoppriceended = {}
@@ -48,6 +49,11 @@ AddEventHandler('QBCore:Client:OnPlayerLoaded', function()
     TriggerServerEvent('qb-tattooshop:server:SelectTattoos')
 end)
 
+RegisterCommand('haha', function()
+	Logedin = true
+    TriggerServerEvent('qb-tattooshop:server:SelectTattoos')
+end)
+
 function DrawTattoo(collection, name)
 	ClearPedDecorations(PlayerPedId())
 	for k, v in pairs(currentTattoos) do
@@ -79,61 +85,67 @@ function RemoveTattoo(name, label)
 			table.remove(currentTattoos, k)
 		end
 	end
+	ClearPedDecorations(PlayerPedId())
 	TriggerServerEvent("qb-tattooshop:server:RemoveTattoo", currentTattoos)
 	QBCore.Functions.Notify("You have removed the " .. GetLabelText(label) .. " tattoo", 'success')
 end
 
 RegisterNetEvent('qb-tattoo:client:SetaCameraForSell', function(data)
-	for k, v in pairs(Config.TattooCats) do
-		if v[1] == data.db2[1] then
-			if not DoesCamExist(cam) then
-				cam = CreateCam("DEFAULT_SCRIPTED_CAMERA", 1)
-				SetCamActive(cam, true)
-				RenderScriptCams(true, false, 0, true, true)
-				StopCamShaking(cam, true)
-			end
-			if GetCamCoord(cam) ~= GetOffsetFromEntityInWorldCoords(PlayerPedId(), v[3][1]) then
-				SetCamCoord(cam, GetOffsetFromEntityInWorldCoords(PlayerPedId(), v[3][1]))
-				PointCamAtCoord(cam, GetOffsetFromEntityInWorldCoords(PlayerPedId(), data.db2[4].x, data.db2[4].y, data.db2[4].z))
+	if not view then
+		for k, v in pairs(Config.TattooCats) do
+			if v[1] == data.db2[1] then
+				if not DoesCamExist(cam) then
+					cam = CreateCam("DEFAULT_SCRIPTED_CAMERA", 1)
+					SetCamActive(cam, true)
+					RenderScriptCams(true, false, 0, true, true)
+					StopCamShaking(cam, true)
+				end
+				if GetCamCoord(cam) ~= GetOffsetFromEntityInWorldCoords(PlayerPedId(), v[3][1]) then
+					SetCamCoord(cam, GetOffsetFromEntityInWorldCoords(PlayerPedId(), v[3][1]))
+					PointCamAtCoord(cam, GetOffsetFromEntityInWorldCoords(PlayerPedId(), data.db2[4].x, data.db2[4].y, data.db2[4].z))
+				end
 			end
 		end
-	end
-	Tattoshoppriceended = {
-		{
-            header = '< Go Back',
-            params = {
-                event = 'qb-tatto:client:gobacktattolist'
-            }
-        },
-		{
-            header = '🔄 Change Camera',
-            params = {
-                event = 'qb-tatto:client:changecamera',
-				args = data.db2[1]
-            }
-        },
-	}
-	Tattoshoppriceended[#Tattoshoppriceended+1] = {
-		header = "Apply tatto",
-		txt = "$"..math.floor(data.db.Price / 10),
-		params = {
-			event = "qb-tattoo:client:EndOftattoIsaccept",
-			args = {["price"] = math.floor(data.db.Price / 10), ["Collection"] = data.db.Collection, ["HashNameFemale"] = data.db.HashNameFemale, ["HashNameMale"] = data.db.HashNameMale, ["name"] = data.db.Name},
+		Tattoshoppriceended = {
+			{
+				header = '< Go Back',
+				params = {
+					event = 'qb-tatto:client:gobacktattolist'
+				}
+			},
+			{
+				header = '🔄 Change Camera',
+				params = {
+					event = 'qb-tatto:client:changecamera',
+					args = data.db2
+				}
+			},
 		}
-	}
+		Tattoshoppriceended[#Tattoshoppriceended+1] = {
+			header = "Apply tatto",
+			txt = "$"..math.floor(data.db.Price / 100),
+			params = {
+				event = "qb-tattoo:client:EndOftattoIsaccept",
+				args = {["price"] = math.floor(data.db.Price / 10), ["Collection"] = data.db.Collection, ["HashNameFemale"] = data.db.HashNameFemale, ["HashNameMale"] = data.db.HashNameMale, ["name"] = data.db.Name},
+			}
+		}
+
+		exports['qb-menu']:openMenu(Tattoshoppriceended)
+	else
+		TriggerEvent('qb-tattoo:client:OpenTattooMenu', data.db2)
+	end
 
 	if GetEntityModel(PlayerPedId()) == `mp_m_freemode_01` then
 		DrawTattoo(data.db.Collection, data.db.HashNameMale)
 	else
 		DrawTattoo(data.db.Collection, data.db.HashNameFemale)
 	end
-	exports['qb-menu']:openMenu(Tattoshoppriceended)
 end)
 
 local cameraname = 1
 RegisterNetEvent('qb-tatto:client:changecamera', function(data)
 	for k, v in pairs(Config.TattooCats) do
-		if v[1] == data then
+		if v[1] == data[1] then
 			if not DoesCamExist(cam) then
 				cam = CreateCam("DEFAULT_SCRIPTED_CAMERA", 1)
 				SetCamActive(cam, true)
@@ -151,7 +163,11 @@ RegisterNetEvent('qb-tatto:client:changecamera', function(data)
 			end
 		end
 	end
-	exports['qb-menu']:openMenu(Tattoshoppriceended)
+	if view then
+		TriggerEvent('qb-tattoo:client:OpenTattooMenu', data)
+	else
+		exports['qb-menu']:openMenu(Tattoshoppriceended)
+	end
 end)
 
 RegisterNetEvent('qb-tattoo:client:EndOftattoIsaccept', function(data)
@@ -193,18 +209,54 @@ RegisterNetEvent('qb-tatto:client:gobacktattolist', function()
 end)
 
 RegisterNetEvent('qb-tattoo:client:OpenTattooMenu', function(data)
-	Tattoshopprice = {
-		{
-			header = "Tattoos for "..data[2],
-			isMenuHeader = true
-		},
-		{
-            header = '< Go Back',
-            params = {
-                event = 'qb-tatto:client:GoToMeno'
-            }
-        },
-	}
+	if view then
+		Tattoshopprice = {
+			{
+				header = "Tattoos for "..data[2],
+				isMenuHeader = true
+			},
+			{
+				header = '< Go Back',
+				params = {
+					event = 'qb-tatto:client:GoToMeno'
+				}
+			},
+			{
+				header = 'View Mode: ✅',
+				params = {
+					event = 'qb-tatto:client:ViewMode',
+					args = data,
+				}
+			},
+			{
+				header = '🔄 Change Camera',
+				params = {
+					event = 'qb-tatto:client:changecamera',
+					args = data
+				}
+			},
+		}
+	else
+		Tattoshopprice = {
+			{
+				header = "Tattoos for "..data[2],
+				isMenuHeader = true
+			},
+			{
+				header = '< Go Back',
+				params = {
+					event = 'qb-tatto:client:GoToMeno'
+				}
+			},
+			{
+				header = 'View Mode: ❌',
+				params = {
+					event = 'qb-tatto:client:ViewMode',
+					args = data,
+				}
+			},
+		}
+	end
 	for _, tattoo in pairs(Config.AllTattooList) do
 		if tattoo.Zone == data[1] then
 			if GetEntityModel(PlayerPedId()) == `mp_m_freemode_01` then
@@ -224,7 +276,7 @@ RegisterNetEvent('qb-tattoo:client:OpenTattooMenu', function(data)
 					end
 					Tattoshopprice[#Tattoshopprice+1] = {
 						header = "["..(#Tattoshopprice+1).."] "..GetLabelText(tattoo.Name),
-						txt = "$"..math.floor(tattoo.Price / 10),
+						txt = "$"..math.floor(tattoo.Price / 100),
 						params = {
 							event = "qb-tattoo:client:SetaCameraForSell",
 							args = {db = tattoo, db2 = data},
@@ -248,7 +300,7 @@ RegisterNetEvent('qb-tattoo:client:OpenTattooMenu', function(data)
 					end
 					Tattoshopprice[#Tattoshopprice+1] = {
 						header = "["..(#Tattoshopprice+1).."] "..GetLabelText(tattoo.Name),
-						txt = "$"..math.floor(tattoo.Price / 10),
+						txt = "$"..math.floor(tattoo.Price / 100),
 						params = {
 							event = "qb-tattoo:client:SetaCameraForSell",
 							args = {db = tattoo, db2 = data},
@@ -309,6 +361,11 @@ Citizen.CreateThread(function()
 			end)
 		end
     end
+end)
+
+RegisterNetEvent('qb-tatto:client:ViewMode', function(data)
+	view = not view
+	TriggerEvent('qb-tattoo:client:OpenTattooMenu', data)
 end)
 
 RegisterNetEvent('qb-tatto:client:GoToMeno', function(data)
