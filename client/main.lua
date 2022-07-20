@@ -49,11 +49,6 @@ AddEventHandler('QBCore:Client:OnPlayerLoaded', function()
     TriggerServerEvent('qb-tattooshop:server:SelectTattoos')
 end)
 
-RegisterCommand('haha', function()
-	Logedin = true
-    TriggerServerEvent('qb-tattooshop:server:SelectTattoos')
-end)
-
 function DrawTattoo(collection, name)
 	ClearPedDecorations(PlayerPedId())
 	for k, v in pairs(currentTattoos) do
