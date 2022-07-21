@@ -1,10 +1,12 @@
-<div align='center'><img src='https://media.discordapp.net/attachments/974780303518343169/989565414461820978/tattoo.png'/></div>
+<div align='center'><img src='https://media.discordapp.net/attachments/991338776955727952/999635368502624306/Screenshot_225.png'/></div>
 
 # Install
 
 Download, put folder in your resources and change name to qb-tattoo, after that you can run server.
 ```
 ensure qb-core
+ensure qb-target
+ensure qb-menu
 ensure qb-tattoo
 ```
 
